@@ -15,6 +15,7 @@ struct user {
     char username[256];
     char host[20]; // xxx.xxx.xxx.xxx\0 ó localhost
     int port;
+    int N_files;
     struct file *files;
     struct user *next;
 };
