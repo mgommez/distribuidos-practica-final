@@ -6,7 +6,8 @@
 
 struct user *USERS = NULL;
 
-int check_value(char *value) {
+//funciones de validación de argumentos
+int check_size256(char *value) {
     // Comprobación de longitud de un valor (no más de 255 caracteres)
     // Válido para filename, description y username
     int i=0;
@@ -27,9 +28,21 @@ int check_value(char *value) {
     return 0;
 }
 
+int check_blanks(char *value){
+  for (int i = 0; value[i] != '\0'; i++) {
+    if (value[i] == ' ') {
+      printf("Error de %s: \n\tcontiene espacios en blanco en la posición %d\n", value, i);
+      return -1;
+    }
+  }
+  return 0;
+}
+
+//funcionalidades servicio de tuplas
+
 int register_user(char *username) {
     //1. Comprobaciones: nombre de usuario válido
-    if (check_value(username) < 0) {
+    if (check_size256(username) < 0) {
       return 2;
     }
 
@@ -76,7 +89,7 @@ int register_user(char *username) {
     new_user->N_files = 0;
 
     if (empty) {
-        TUPLE = new_user;
+        USERS = new_user;
     } else {
         // insertar el nuevo elemento al final de la lista enlazada
         temp->next = new_user;
@@ -88,7 +101,7 @@ int register_user(char *username) {
 
 int connect_user(char *username, char *host, int port) {
     //1. Comprobación de la corrección de los argumentos
-    if (check_value(username) < 0) {
+    if (check_size256(username) < 0) {
         return 3;
     }
     // TODO: check host y check port?
@@ -116,7 +129,7 @@ int connect_user(char *username, char *host, int port) {
     }
 
     //3. Se guarda el puerto donde está escuchando peticiones el usuario
-    if (temp->port != NULL) {
+    if (temp->port != -1) {
         printf("El usuario %s ya está conectado.\n", username);
         return 2;
     } else {
@@ -131,10 +144,11 @@ int publish_file(char *username, char *filename, char *description) {
     // Se busca el username del cliente que está haciendo la solicitud y se almacena el nuevo archivo
 
     //1. Comprobación de la corrección de los argumentos
-    if (check_value(username) < 0 || check_value(filename) < 0 || check_value(description) < 0) {
+    if (check_size256(username) < 0 || check_size256(filename) < 0 || check_size256(description) < 0 || check_blanks(filename) < 0) {
         printf("publish_file: error en los argumentos de entrada\n");
         return 4;
     }
+
 
     //2. Búsqueda del usuario
 
@@ -159,7 +173,7 @@ int publish_file(char *username, char *filename, char *description) {
     }
 
     //3. Comprobación de conexión del usuario
-    if (temp->port == NULL) {   // TODO: cómo definir que está o no conectado? NULL u otro valor numérico?
+    if (temp->port == -1) {   // TODO: cómo definir que está o no conectado? NULL u otro valor numérico?
         printf("El usuario %s no está conectado al servicio", username);
         return 2;
     }
@@ -210,7 +224,7 @@ int publish_file(char *username, char *filename, char *description) {
 int get_user(char *username, char *host, int *port) { // añadir puntero a struct file podría aligerar el código
     // ¿¿Meter en .h??
     // Búsqueda de un elemento de la lista enlazada dado su identificador (el username)
-    if (check_value(username) < 0) {
+    if (check_size256(username) < 0) {
         return -1;
     }
 
@@ -243,7 +257,7 @@ int get_user(char *username, char *host, int *port) { // añadir puntero a struc
 
 int delete_file(char *username, char *filename) {
     //1. Comprobación de la corrección de los argumentos
-    if (check_value(username) < 0 || check_value(filename) < 0 || check_value(description) < 0) {
+    if (check_size256(username) < 0 || check_size256(filename) < 0 || check_blanks(filename) < 0) {
         return 4;
     }
 
@@ -270,7 +284,7 @@ int delete_file(char *username, char *filename) {
     }
 
     //3. Comprobación de conexión del usuario
-    if (temp->port == NULL) {   // TODO: cómo definir que está o no conectado? NULL u otro valor numérico?
+    if (temp->port == -1) {   // TODO: cómo definir que está o no conectado? NULL u otro valor numérico?
         printf("El usuario %s no está conectado al servicio", username);
         return 2;
     }
@@ -311,10 +325,10 @@ int delete_file(char *username, char *filename) {
     return 0;
 };
 
-int list_users(char *username, int *counter, struct user* users) {  // TODO: Hay que enviar el número de usuarios guardados para que el cliente sepa cuántos va a recibir
+int list_users(char *username, int *counter, struct user_data_item* user_list) {
                                                 // La pregunta es cómo se va a pasar toda la información leída ¿leerlos de uno en uno desde el servidor?
     // 1. Comprobación de la corrección de los argumentos
-    if (check_value(username) < 0 || check_value(filename) < 0 || check_value(description) < 0) {
+    if (check_size256(username) < 0) {
         return 3;
     }
 
@@ -344,7 +358,7 @@ int list_users(char *username, int *counter, struct user* users) {  // TODO: Hay
     }
 
     // Comprobación de requisito de conexión del usuario
-    if (temp->port == NULL) {   // TODO: cómo definir que está o no conectado? NULL u otro valor numérico?
+    if (temp->port == -1) {   // TODO: cómo definir que está o no conectado? NULL u otro valor numérico?
         printf("El usuario %s no está conectado al servicio", username);
         return 2;
     }
@@ -353,14 +367,38 @@ int list_users(char *username, int *counter, struct user* users) {  // TODO: Hay
     // Declaración de variables auxiliares para recorrer la lista de usuarios
     int contador = 0;
     temp = USERS;
+    struct user_data_item *temp_new_user = user_list;
 
     while (temp != NULL) {
+        if(temp->port != -1){ //si el usuario está conectado...
+
+            //creación de nodo de la lista resultado
+            struct user_data_item *new_user = (struct user_data_item *)malloc(sizeof(struct user_data_item)); //liberada por el servidor -después de escribir en el socket
+
+            if (new_user == NULL) {
+                printf("Error al reservar memoria dinámica.");
+                return 2;
+            }
+
+            strcpy(new_user->username, temp->username);
+            strcpy(new_user->host, temp->host);
+            new_user->port = temp->port;
+
+            if (user_list == NULL) {
+                //lista resultado vacía -insercción de primer elemento
+                user_list = new_user;
+
+            } else {
+                // insertar el nuevo elemento al final de la lista enlazada
+                temp_new_user->next = new_user;
+            }
+            contador++;
+        }
         temp = temp->next;
-        contador++;
+
     }
 
     *counter = contador;
-    user = USERS;
     return 0;
 };
 
@@ -369,7 +407,7 @@ int list_content(char *username, char *searched_username, int * counter, struct 
                                                                 // los archivos publicados
                                                                 // TODO: mismo problema de list_users() con el envío de la info + también hay que devolver un contador como en list_users()
     // 1. Comprobación de la corrección de los argumentos
-    if (check_value(username) < 0 || check_value(searched_username) < 0) {
+    if (check_size256(username) < 0 || check_size256(searched_username) < 0) {
         return 4;
     }
 
@@ -389,7 +427,7 @@ int list_content(char *username, char *searched_username, int * counter, struct 
 
     while (find_user == 0 || find_searched==0) {
         if (temp->username == username) {
-            if (temp->port == NULL) {
+            if (temp->port == -1) {
                 printf("El usuario %s no está conectado al servicio", username);
                 return 2;
             }
@@ -422,7 +460,7 @@ int list_content(char *username, char *searched_username, int * counter, struct 
     }
 
     *counter = temp->N_files;
-    *user_files = temp->files;
+    user_files = temp->files;
     return 0;
 };
 
@@ -430,7 +468,7 @@ int disconnect_user(char *username) {
     // Al desconectarse un usuario, deja de escuchar en el puerto almacenado
 
     // 1. Comprobación de la corrección de los argumentos
-    if (check_value(username) < 0) {
+    if (check_size256(username) < 0) {
         return 3;
     }
 
@@ -457,15 +495,15 @@ int disconnect_user(char *username) {
     }
 
     // Comprobación de conexión previa
-    if (temp->port == NULL) {
+    if (temp->port == -1) {
         printf("El usuario %s no estaba conectado.\n", username);
         return 2;
     }
 
     //3. Eliminar parámetros de conexión
 
-    temp->host = NULL; //TODO: solución temporal -> pendiente verificar comportamiento.
-    temp->port = NULL;
+    memset(temp->host, '\0', sizeof(temp->host)); //TODO: solución temporal -> pendiente verificar comportamiento.
+    temp->port = -1;
     return 0;
 };
 
@@ -473,7 +511,7 @@ int unregister_user(char *username) {
     // Se elimina el usuario de la lista
 
     // 1. Comprobación del valor de usuario
-    if (check_value(username) < 0) {
+    if (check_size256(username) < 0) {
         return 2;
     }
 

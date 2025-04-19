@@ -18,6 +18,9 @@ pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 int assigned_port = 0;
 char *port;
 
+
+//funcionalidad principal
+
 void *tratar_peticion(void *sd_client_void) {
 
     // 1. Extración del descriptor de socket y liberación de memoria dinámica
@@ -27,7 +30,7 @@ void *tratar_peticion(void *sd_client_void) {
     int ret;
     int r;
     char op[20];
-    char buffer[350];
+    char buffer[257]; //TODO: revisar tamaño del buffer
     char *endptr;
 
     struct peticion *p = (struct peticion *) malloc(sizeof(struct peticion));
@@ -44,35 +47,372 @@ void *tratar_peticion(void *sd_client_void) {
         closeSocket(sd_client);
         pthread_exit((void *) -2);
     }
-
-    op = strcpy(op, buffer);
+    //TODO: añadir comprobación de fin de cadena '\0'??
+    strcpy(op, buffer);
     memset(buffer, '\0', sizeof(buffer));
 
     // Llamada a la operación según el código recibido
-    switch (op) {
-        case "REGISTER":
-          break;
-        case "UNREGISTER":
-          break;
-        case "CONNECT":
-          break;
-        case "PUBLISH":
-          break;
-        case "DELETE":
-          break;
-        case "LIST_USERS";
-          break;
-        case "LIST_CONTENT":
-          break;
-        case "DISCONNECT":
-          break;
-    default:
-        printf("Operación desconocida: %d\n", op);
-        break;
+    if( strcmp(op, "REGISTER") == 0){
+        //1. Lectura de parámetros por socket
+        ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
+        if (ret < 0) {
+            perror("Error al leer parámetro del cliente: username");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+
+        //2. Llamada a la función
+        r = register_user(p->username);
+
+        //3. Escritura del resultado por socket
+        sprintf(buffer, "%d", r);
+        ret = writeLine(sd_client, buffer);
+        if(ret<0){
+            perror("Error en writeLine del servidor REGISTER");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+        memset(buffer, '\0', sizeof(buffer));
+
+    } //end REGISTER
+
+    else if( strcmp(op, "UNREGISTER") == 0){
+        //1. Lectura de parámetros por socket
+        ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
+        if (ret < 0) {
+            perror("Error al leer parámetro del cliente: username");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+        //2. Llamada a la función
+        r = register_user(p->username);
+
+        //3. Escritura del resultado por socket
+        sprintf(buffer, "%d", r);
+        ret = writeLine(sd_client, buffer);
+        if(ret<0){
+            perror("Error en writeLine del servidor UNREGISTER");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+        memset(buffer, '\0', sizeof(buffer));
+
+    } //end UNREGISTER
+
+    else if( strcmp(op, "CONNECT") == 0){
+        //1. Lectura de parámetros por socket
+        ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
+        if (ret < 0) {
+            perror("Error al leer parámetro del cliente: username");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+        ret = readLine(sd_client, buffer, sizeof(buffer)); //lectura puerto
+        if (ret < 0) {
+            perror("Error al leer parámetro del cliente: port");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+        memset(buffer, '\0', sizeof(buffer));
+
+        p->port = strtol(buffer, &endptr, 10);
+        if (endptr[0] != '\0') {
+            printf("Error: %s no es un número en base %d\n", buffer, 10);
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -1);
+        }
+        memset(buffer, '\0', sizeof(buffer));
 
 
+        //obtención de la ip del cliente
+        ret = getClientIp(sd_client);
+        if (ret < 0) {
+            perror("Error al obtener la ip del cliente");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -1);
+        }
+
+        //2. Llamada a la función
+        r = connect_user(p->username, p->host, p->port);
+
+        //3. Escritura del resultado por socket
+        sprintf(buffer, "%d", r);
+        ret = writeLine(sd_client, buffer);
+        if(ret<0){
+            perror("Error en writeLine del servidor CONNECT");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+        memset(buffer, '\0', sizeof(buffer));
+
+    } //end CONNECT
+
+    else if( strcmp(op, "PUBLISH") == 0){
+        //1. Lectura de parámetros por socket
+        ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
+        if (ret < 0) {
+            perror("Error al leer parámetro del cliente: username");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+
+        ret = readLine(sd_client, p->filename, sizeof(p->filename)); //lectura filename (path)
+        if (ret < 0) {
+            perror("Error al leer parámetro del cliente: filename");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+
+        ret = readLine(sd_client, p->description, sizeof(p->description)); //lectura descripción
+        if (ret < 0) {
+            perror("Error al leer parámetro del cliente: description");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+
+        //2. Llamada a la función
+        r = publish_file(p->username, p->filename, p->description);
+
+        //3. Escritura del resultado por socket
+        sprintf(buffer, "%d", r);
+        ret = writeLine(sd_client, buffer);
+        if(ret<0){
+            perror("Error en writeLine del servidor PUBLISH");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+        memset(buffer, '\0', sizeof(buffer));
+
+    } //end PUBLISH
+
+    else if( strcmp(op, "DELETE") == 0){
+        //1. Lectura de parámetros por socket
+        ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
+        if (ret < 0) {
+            perror("Error al leer parámetro del cliente: username");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+
+        ret = readLine(sd_client, p->filename, sizeof(p->filename)); //lectura filename (path)
+        if (ret < 0) {
+            perror("Error al leer parámetro del cliente: filename");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+
+        //2. Llamada a la función
+        r = delete_file(p->username, p->filename);
+
+        //3. Escritura del resultado por socket
+        sprintf(buffer, "%d", r);
+        ret = writeLine(sd_client, buffer);
+        if(ret<0){
+            perror("Error en writeLine del servidor DELETE");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+        memset(buffer, '\0', sizeof(buffer));
+    } //end DELETE
+
+    else if( strcmp(op, "LIST_USERS") == 0){
+        //1. Lectura de parámetros por socket
+        ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
+        if (ret < 0) {
+            perror("Error al leer parámetro del cliente: username");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+        //2. Llamada a la función
+        struct data *d = (struct data *) malloc(sizeof(struct data)); //TODO: revisar frees
+        r = list_users(p->username,&(d->counter), d->user_list); //se recive una lista de estrcuturas tipo user, ip, puerto, next con los usuarios conectados
+
+        //3. Escritura del resultado por socket
+        sprintf(buffer, "%d", r);
+        ret = writeLine(sd_client, buffer); //escritura byte de resultado
+        if(ret<0){
+            perror("Error en writeLine del servidor LIST_USERS");
+            free(p);
+            free(d);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+        memset(buffer, '\0', sizeof(buffer));
+
+        if(ret == 0) {
+        //éxito de la operación: se envía la lista de usuarios
+              sprintf(buffer, "%d", d->counter);
+              ret = writeLine(sd_client, buffer); //escritura número de usuarios
+              if(ret<0){
+                  perror("Error en writeLine del servidor LIST_USERS");
+                  free(p);
+                  free(d);
+                  closeSocket(sd_client);
+                  pthread_exit((void *) -2);
+              }
+              memset(buffer, '\0', sizeof(buffer));
+              struct user_data_item *current_user = d->user_list;
+              struct user_data_item *prev_user;
+              for(int i=0; i<d->counter; i++) {
+                  //escritura de los datos de cada usuario conectado
+
+                  ret = writeLine(sd_client, current_user->username); //escritura username
+                  if(ret<0){
+                      perror("Error en writeLine del servidor LIST_USERS");
+                      free(p);
+                      free(d);
+                      free(current_user);
+                      closeSocket(sd_client);
+                      pthread_exit((void *) -2);
+                  }
+
+                  ret = writeLine(sd_client, current_user->host); //escritura ip
+                  if(ret<0){
+                      perror("Error en writeLine del servidor LIST_USERS");
+                      free(p);
+                      free(d);
+                      free(current_user);
+                      closeSocket(sd_client);
+                      pthread_exit((void *) -2);
+                  }
+
+                  sprintf(buffer, "%d", current_user->port);
+                  ret = writeLine(sd_client, buffer); //escritura puerto
+                  if(ret<0){
+                      perror("Error en writeLine del servidor LIST_USERS");
+                      free(p);
+                      free(d);
+                      free(current_user);
+                      closeSocket(sd_client);
+                      pthread_exit((void *) -2);
+                  }
+                  memset(buffer, '\0', sizeof(buffer));
+
+                  //liberar memoria y avanzar en la lista
+                  prev_user = current_user;
+                  current_user = current_user -> next;
+                  free(prev_user);
+
+              } //end for
+              free(d);
+
+        } //end if
+
+    } //end LIST_USERS
+
+    else if( strcmp(op, "LIST_CONTENT") == 0){
+        //1. Lectura de parámetros por socket
+        ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username emisor
+        if (ret < 0) {
+            perror("Error al leer parámetro del cliente: username");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+
+        ret = readLine(sd_client, p->user_wanted, sizeof(p->user_wanted)); //lectura username solicitado
+        if (ret < 0) {
+            perror("Error al leer parámetro del cliente: user_wanted");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+        //2. Llamada a la función
+        struct data *d = (struct data *) malloc(sizeof(struct data)); //TODO: revisar frees
+        r = list_content(p->username, p->user_wanted, &(d->counter), d->file_list); //se recive una lista de estrcuturas tipo filename, next con los ficheros del usuario
+        //TODO: update users.c
+
+        //3. Escritura del resultado por socket
+        sprintf(buffer, "%d", r);
+        ret = writeLine(sd_client, buffer); //escritura byte de resultado
+        if(ret<0){
+            perror("Error en writeLine del servidor LIST_CONTENT");
+            free(p);
+            free(d);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+        memset(buffer, '\0', sizeof(buffer));
+
+        if(ret == 0) {
+            //éxito de la operación: se envía la lista de ficheros
+            sprintf(buffer, "%d", d->counter);
+            ret = writeLine(sd_client, buffer); //escritura número de archivos
+            if(ret<0){
+                perror("Error en writeLine del servidor LIST_CONTENT");
+                free(p);
+                free(d);
+                closeSocket(sd_client);
+                pthread_exit((void *) -2);
+            }
+            memset(buffer, '\0', sizeof(buffer));
+
+            struct file *current_file = d->file_list;
+
+            for(int i=0; i<d->counter; i++) {
+                //escritura de los datos de cada usuario conectado
+
+                ret = writeLine(sd_client, current_file->filename); //escritura fichero
+                if(ret<0){
+                    perror("Error en writeLine del servidor LIST_USERS");
+                    free(p);
+                    free(d);
+                    free(current_file);
+                    closeSocket(sd_client);
+                    pthread_exit((void *) -2);
+                }
+                //avanzar en la lista
+                current_file = current_file->next;
+            }//end for
+
+            free(d);
+        }//end if
+
+    }//end LIST_CONTENT
+
+    else if( strcmp(op, "DISCONNECT") == 0){
+        //1. Lectura de parámetros por socket
+        ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
+        if (ret < 0) {
+            perror("Error al leer parámetro del cliente: username");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+        //2. Llamada a la función
+        r = disconnect_user(p->username);
+
+        //3. Escritura del resultado por socket
+        sprintf(buffer, "%d", r);
+        ret = writeLine(sd_client, buffer);
+        if(ret<0){
+            perror("Error en writeLine del servidor DISCONNECT");
+            free(p);
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+    }//end DISCONNECT
+
+    else{
+      printf("Operación desconocida: %s\n", op);
     }
-
 
     //Final de ejecución
     printf("OPERATION %s FROM %s\n", op, p->username);
@@ -81,7 +421,7 @@ void *tratar_peticion(void *sd_client_void) {
     closeSocket(sd_client);  // El hilo cierra el socket al final
     pthread_exit(NULL);
 
-}
+}//end tratar_peticion
 
 int do_exit = 0;
 

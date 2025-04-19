@@ -1,5 +1,23 @@
 #include "comm.h"
 
+int getClientIp(int sd_client, char *ip_client){
+
+    struct sockaddr_in addr;
+    socklen_t addr_len = sizeof(addr);
+
+    if (getpeername(sd_client, (struct sockaddr*)&addr, &addr_len) == -1) {
+        perror("getpeername");
+        return -1;
+    }
+
+    char ip_aux[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(addr.sin_addr), ip_aux, INET_ADDRSTRLEN);
+
+    strcpy(ip_client, ip_aux);
+    return 0;
+
+}
+
 int serverSocket ( unsigned int addr, int port, int type )
 {
     struct sockaddr_in server_addr ;
