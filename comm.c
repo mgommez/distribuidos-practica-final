@@ -15,7 +15,6 @@ int getClientIp(int sd_client, char *ip_client){
 
     strcpy(ip_client, ip_aux);
     return 0;
-
 }
 
 int serverSocket ( unsigned int addr, int port, int type )

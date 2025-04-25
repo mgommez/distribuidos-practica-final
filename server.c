@@ -52,7 +52,7 @@ void *tratar_peticion(void *sd_client_void) {
     memset(buffer, '\0', sizeof(buffer));
 
     // Llamada a la operación según el código recibido
-    if( strcmp(op, "REGISTER") == 0){
+    if(strcmp(op, "REGISTER") == 0){
         //1. Lectura de parámetros por socket
         ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
         if (ret < 0) {
@@ -132,13 +132,14 @@ void *tratar_peticion(void *sd_client_void) {
 
 
         //obtención de la ip del cliente
-        ret = getClientIp(sd_client);
+        ret = getClientIp(sd_client, p->host);
         if (ret < 0) {
             perror("Error al obtener la ip del cliente");
             free(p);
             closeSocket(sd_client);
             pthread_exit((void *) -1);
         }
+
 
         //2. Llamada a la función
         r = connect_user(p->username, p->host, p->port);
