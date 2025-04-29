@@ -167,13 +167,13 @@ void *tratar_peticion(void *sd_client_void) {
 
     else if( strcmp(op, "PUBLISH") == 0){
         //1. Lectura de parámetros por socket
-        /*ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
+        ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
         if (ret < 0) {
             perror("Error al leer parámetro del cliente: username");
             free(p);
             closeSocket(sd_client);
             pthread_exit((void *) -2);
-        }*/
+        }
 
         ret = readLine(sd_client, p->filename, sizeof(p->filename)); //lectura filename (path)
         if (ret < 0) {
@@ -209,13 +209,13 @@ void *tratar_peticion(void *sd_client_void) {
 
     else if( strcmp(op, "DELETE") == 0){
         //1. Lectura de parámetros por socket
-        /*ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
+        ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
         if (ret < 0) {
             perror("Error al leer parámetro del cliente: username");
             free(p);
             closeSocket(sd_client);
             pthread_exit((void *) -2);
-        }*/
+        }
 
         ret = readLine(sd_client, p->filename, sizeof(p->filename)); //lectura filename (path)
         if (ret < 0) {
@@ -242,13 +242,13 @@ void *tratar_peticion(void *sd_client_void) {
 
     else if( strcmp(op, "LIST_USERS") == 0){
         //1. Lectura de parámetros por socket
-        /*ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
+        ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
         if (ret < 0) {
             perror("Error al leer parámetro del cliente: username");
             free(p);
             closeSocket(sd_client);
             pthread_exit((void *) -2);
-        }*/
+        }
 
         //2. Llamada a la función
         struct data *d = (struct data *) malloc(sizeof(struct data)); //TODO: revisar frees
@@ -329,13 +329,13 @@ void *tratar_peticion(void *sd_client_void) {
 
     else if( strcmp(op, "LIST_CONTENT") == 0){
         //1. Lectura de parámetros por socket
-        /*ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username emisor
+        ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username emisor
         if (ret < 0) {
             perror("Error al leer parámetro del cliente: username");
             free(p);
             closeSocket(sd_client);
             pthread_exit((void *) -2);
-        }*/
+        }
 
         ret = readLine(sd_client, p->user_wanted, sizeof(p->user_wanted)); //lectura username solicitado
         if (ret < 0) {

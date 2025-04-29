@@ -62,7 +62,7 @@ int register_user(char *username) {
     while (find == 0) {
 
         //si el usuario existe retornamos
-        if(username == temp-> username){
+        if(strcmp(username, temp-> username)){
           printf("El usuario %s ya está registrado.\n", username);
           return 1;
         }
@@ -96,6 +96,14 @@ int register_user(char *username) {
     }
     //new_user->next = NULL; //TODO: necesario? creo que se hace por defecto
 
+    // TODO: DEBUGGING
+    temp = USERS;
+    // Bucle para recorrer la lista enlazada
+    while (temp != NULL) {
+        printf("Usuario: %s", temp->username);
+        temp = temp->next;
+    }
+
     return 0;
 };
 
@@ -118,7 +126,7 @@ int connect_user(char *username, char *host, int port) {
     struct user *temp = USERS;
 
     while (find == 0) {
-        if (temp->username == username) {
+        if (strcmp(temp->username, username)) {
             find=1;
         } else if (temp->next == NULL) {
             printf("El usuario %s no está en la lista.\n", username);
@@ -162,7 +170,7 @@ int publish_file(char *username, char *filename, char *description) {
     struct user *temp = USERS;
 
     while (find == 0) {
-        if (temp->username == username) {
+        if (strcmp(temp->username, username)) {
             find=1;
         } else if (temp->next == NULL) {
             printf("El usuario %s no está en la lista.\n", username);
@@ -178,7 +186,7 @@ int publish_file(char *username, char *filename, char *description) {
         return 2;
     }
 
-    //4. Insercción del fichero
+    //4. Inserción del fichero
 
     // Se hace una búsqueda de los archivos (si existen), comprobando que el archivo a guardar no está ya guardado
     // Si es así, se busca el final de la lista enlazada de archivos del usuario y se almacena el nuevo archivo
@@ -238,7 +246,7 @@ int get_user(char *username, char *host, int *port) { // añadir puntero a struc
     struct user *temp = USERS;
 
     while (find == 0) {
-        if (temp->username == username) {
+        if (strcmp(temp->username, username)) {
             find=1;
         } else if (temp->next == NULL) {
             printf("El usuario %s no está en la lista.\n", username);
@@ -273,7 +281,7 @@ int delete_file(char *username, char *filename) {
     struct user *temp = USERS;
 
     while (find == 0) {
-        if (temp->username == username) {
+        if (strcmp(temp->username, username)) {
             find=1;
         } else if (temp->next == NULL) {
             printf("El usuario %s no está en la lista.\n", username);
@@ -347,7 +355,7 @@ int list_users(char *username, int *counter, struct user_data_item* user_list) {
     struct user *temp = USERS;
 
     while (find == 0) {
-        if (temp->username == username) {
+        if (strcmp(temp->username, username)) {
             find=1;
         } else if (temp->next == NULL) {
             printf("El usuario %s no está en la lista.\n", username);
@@ -426,7 +434,7 @@ int list_content(char *username, char *searched_username, int * counter, struct 
     struct user *temp = USERS;
 
     while (find_user == 0 || find_searched==0) {
-        if (temp->username == username) {
+        if (strcmp(temp->username, username)) {
             if (temp->port == -1) {
                 printf("El usuario %s no está conectado al servicio", username);
                 return 2;
@@ -484,7 +492,7 @@ int disconnect_user(char *username) {
     struct user *temp = USERS;
 
     while (find == 0) {
-        if (temp->username == username) {
+        if (strcmp(temp->username, username)) {
             find=1;
         } else if (temp->next == NULL) {
             printf("El usuario %s no está en la lista.\n", username);
@@ -527,7 +535,7 @@ int unregister_user(char *username) {
     struct user *prev = NULL;
 
     while (find == 0) {
-        if (temp->username == username) {
+        if (strcmp(temp->username, username)) {
             find=1;
         } else if (temp->next == NULL) {
             // Caso de usuario no registrado
