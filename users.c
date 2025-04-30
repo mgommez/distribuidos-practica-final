@@ -21,7 +21,7 @@ int check_size256(char *value) {
     }
 
     if(end != 1){
-        printf("Error de %s: \n\tmayor de 255 caracteres\n", value);
+        printf("Error: valor mayor de 255 caracteres.\n");
         return -1;
     }
 
@@ -42,7 +42,7 @@ int check_blanks(char *value){
 
 int register_user(char *username) {
     //1. Comprobaciones: nombre de usuario válido
-    if (check_size256(username) < 0) {
+    if (check_size256(username) < 0 || check_blanks(username) < 0) {
       return 2;
     }
 
@@ -62,7 +62,7 @@ int register_user(char *username) {
     while (find == 0) {
 
         //si el usuario existe retornamos
-        if(strcmp(username, temp-> username)){
+        if(strcmp(username, temp->username) == 0){
           printf("El usuario %s ya está registrado.\n", username);
           return 1;
         }
@@ -94,7 +94,7 @@ int register_user(char *username) {
         // insertar el nuevo elemento al final de la lista enlazada
         temp->next = new_user;
     }
-    //new_user->next = NULL; //TODO: necesario? creo que se hace por defecto
+    new_user->next = NULL;
 
     // TODO: DEBUGGING
     temp = USERS;
@@ -109,7 +109,7 @@ int register_user(char *username) {
 
 int connect_user(char *username, char *host, int port) {
     //1. Comprobación de la corrección de los argumentos
-    if (check_size256(username) < 0) {
+    if (check_size256(username) < 0 || check_blanks(username) < 0) {
         return 3;
     }
     // TODO: check host y check port?
@@ -152,7 +152,8 @@ int publish_file(char *username, char *filename, char *description) {
     // Se busca el username del cliente que está haciendo la solicitud y se almacena el nuevo archivo
 
     //1. Comprobación de la corrección de los argumentos
-    if (check_size256(username) < 0 || check_size256(filename) < 0 || check_size256(description) < 0 || check_blanks(filename) < 0) {
+    if (check_size256(username) < 0 || check_size256(filename) < 0 || check_size256(description) < 0 ||
+        check_blanks(username) < 0 || check_blanks(filename) < 0) {
         printf("publish_file: error en los argumentos de entrada\n");
         return 4;
     }
@@ -228,44 +229,11 @@ int publish_file(char *username, char *filename, char *description) {
     return 0;
 };
 
-/*
-int get_user(char *username, char *host, int *port) { // añadir puntero a struct file podría aligerar el código
-    // ¿¿Meter en .h??
-    // Búsqueda de un elemento de la lista enlazada dado su identificador (el username)
-    if (check_size256(username) < 0) {
-        return -1;
-    }
-
-    // caso de lista enlazada vacía
-    if (USERS == NULL) {
-        printf("Lista vacía; usuario %s no encontrado.\n", username);
-        return -1;
-    }
-
-    int find = 0;
-    struct user *temp = USERS;
-
-    while (find == 0) {
-        if (strcmp(temp->username, username)) {
-            find=1;
-        } else if (temp->next == NULL) {
-            printf("El usuario %s no está en la lista.\n", username);
-            return -1;
-        } else {
-            temp = temp->next;
-        }
-    }
-
-    strcpy(host, temp->host);
-    *port = temp->port;
-
-    return 0;
-};
- */
 
 int delete_file(char *username, char *filename) {
     //1. Comprobación de la corrección de los argumentos
-    if (check_size256(username) < 0 || check_size256(filename) < 0 || check_blanks(filename) < 0) {
+    if (check_size256(username) < 0 || check_size256(filename) < 0 ||
+        check_blanks(username) < 0 || check_blanks(filename) < 0) {
         return 4;
     }
 
@@ -336,7 +304,7 @@ int delete_file(char *username, char *filename) {
 int list_users(char *username, int *counter, struct user_data_item* user_list) {
                                                 // La pregunta es cómo se va a pasar toda la información leída ¿leerlos de uno en uno desde el servidor?
     // 1. Comprobación de la corrección de los argumentos
-    if (check_size256(username) < 0) {
+    if (check_size256(username) < 0 || check_blanks(username) < 0) {
         return 3;
     }
 
@@ -410,12 +378,10 @@ int list_users(char *username, int *counter, struct user_data_item* user_list) {
     return 0;
 };
 
-int list_content(char *username, char *searched_username, int * counter, struct file* user_files) {     // username es el que realiza la petición
-                                                                // searched_username el usuario del que quiere conocer
-                                                                // los archivos publicados
-                                                                // TODO: mismo problema de list_users() con el envío de la info + también hay que devolver un contador como en list_users()
+int list_content(char *username, char *searched_username, int * counter, struct file* user_files) {     // username es el que realiza la petición// TODO: mismo problema de list_users() con el envío de la info + también hay que devolver un contador como en list_users()
     // 1. Comprobación de la corrección de los argumentos
-    if (check_size256(username) < 0 || check_size256(searched_username) < 0) {
+    if (check_size256(username) < 0 || check_size256(searched_username) < 0 ||
+        check_blanks(username) < 0 || check_blanks(searched_username) < 0) {
         return 4;
     }
 
@@ -476,7 +442,7 @@ int disconnect_user(char *username) {
     // Al desconectarse un usuario, deja de escuchar en el puerto almacenado
 
     // 1. Comprobación de la corrección de los argumentos
-    if (check_size256(username) < 0) {
+    if (check_size256(username) < 0 || check_blanks(username) < 0) {
         return 3;
     }
 
@@ -515,55 +481,44 @@ int disconnect_user(char *username) {
     return 0;
 };
 
-int unregister_user(char *username) {
-    // Se elimina el usuario de la lista
 
-    // 1. Comprobación del valor de usuario
-    if (check_size256(username) < 0) {
+int unregister_user(char *username) {
+    if (check_size256(username) < 0 || check_blanks(username) < 0) {
         return 2;
     }
 
-    // 2. Comprobación existencia usuario
-    // Caso de lista vacía
-    if (USERS == NULL) {
-        printf("Lista vacía; usuario %s no encontrado.\n", username);
-        return 1;
-    }
-
-    int find = 0;
     struct user *temp = USERS;
     struct user *prev = NULL;
 
-    while (find == 0) {
-        if (strcmp(temp->username, username)) {
-            find=1;
-        } else if (temp->next == NULL) {
-            // Caso de usuario no registrado
-            printf("El usuario %s no está registrado.\n", username);
-            return 1;
-        } else {
-            prev = temp;
-            temp = temp->next;
+    while (temp != NULL) {
+        if (strcmp(username, temp->username) == 0) {
+            // Usuario encontrado
+            if (prev == NULL) {
+                // Es el primer usuario
+                USERS = temp->next;
+            } else {
+                prev->next = temp->next;
+            }
+
+            // Liberar memoria dinámica
+            if (temp->files) {
+                struct file *current_file = temp->files;
+                while (current_file != NULL) {
+                    struct file *next_file = current_file->next;
+                    free(current_file);
+                    current_file = next_file;
+                }
+            }
+            free(temp);
+            return 0;
         }
+
+        prev = temp;
+        temp = temp->next;
     }
 
-    // Caso de que se borre el primer elemento de la lista enlazada
-    if (prev == NULL) {
-        USERS = temp->next;
-    } else {
-        prev->next = temp->next;
-    }
+    // No encontrado
+    printf("El usuario %s no está registrado.\n", username);
+    return 1;
+}
 
-    // Liberar memoria dinámica
-    if (temp->files) {
-        struct file *current_file = temp->files;
-        while (current_file != NULL) {
-            struct file *next_file = current_file->next;
-            free(current_file);
-            current_file = next_file;
-        }
-    }
-    free(temp);
-
-    return 0;
-};
