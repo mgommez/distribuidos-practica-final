@@ -34,9 +34,9 @@ int connect_user(char *username, char*host, int port);
 
 int publish_file(char *username, char *filename, char *description);
 
-int list_users(char *username, int *counter, struct user_data_item *user_list);
+int list_users(char *username, int *counter, struct user_data_item **user_list);
 
-int list_content(char *username, char *searched_username, int * counter, struct file *user_files);
+int list_content(char *username, char *searched_username, int * counter, struct file **user_files);
 
 int delete_file(char *username, char *filename);
 

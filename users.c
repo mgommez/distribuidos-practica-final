@@ -86,6 +86,7 @@ int register_user(char *username) {
 
     //copia de parámetros
     strcpy(new_user->username, username);
+    new_user->port = -1; // porque aún no está conectado
     new_user->N_files = 0;
 
     if (empty) {
@@ -100,7 +101,10 @@ int register_user(char *username) {
     temp = USERS;
     // Bucle para recorrer la lista enlazada
     while (temp != NULL) {
-        printf("Usuario: %s", temp->username);
+        printf("Usuario: %s\n", temp->username);
+        printf("\tHost: %s\n", temp->host);
+        printf("\tPort: %d\n", temp->port);
+        printf("\tN_files: %d\n", temp->N_files);
         temp = temp->next;
     }
 
@@ -126,7 +130,7 @@ int connect_user(char *username, char *host, int port) {
     struct user *temp = USERS;
 
     while (find == 0) {
-        if (strcmp(temp->username, username)) {
+        if (strcmp(temp->username, username) == 0) {
             find=1;
         } else if (temp->next == NULL) {
             printf("El usuario %s no está en la lista.\n", username);
@@ -144,6 +148,17 @@ int connect_user(char *username, char *host, int port) {
         strcpy(temp->host, host);
         temp->port = port;
     };
+
+    // TODO: DEBUGGING
+    temp = USERS;
+    // Bucle para recorrer la lista enlazada
+    while (temp != NULL) {
+        printf("Usuario: %s\n", temp->username);
+        printf("\tHost: %s\n", temp->host);
+        printf("\tPort: %d\n", temp->port);
+        printf("\tN_files: %d\n", temp->N_files);
+        temp = temp->next;
+    }
 
     return 0;
 };
@@ -171,7 +186,7 @@ int publish_file(char *username, char *filename, char *description) {
     struct user *temp = USERS;
 
     while (find == 0) {
-        if (strcmp(temp->username, username)) {
+        if (strcmp(temp->username, username) == 0) {
             find=1;
         } else if (temp->next == NULL) {
             printf("El usuario %s no está en la lista.\n", username);
@@ -194,37 +209,61 @@ int publish_file(char *username, char *filename, char *description) {
 
     struct file *new_file = (struct file*)malloc(sizeof(struct file));
     if (new_file == NULL) {
-        printf("Error al reservar memoria dinámica.");
+        printf("Error al reservar memoria dinámica.\n");
         return 4;
-    }
-
-    struct file *temp_file = temp->files;
-
-
-    find = 0;
-    if (temp_file == NULL) {    // Caso de lista de archivos vacía
-        temp_file = new_file;
-        find= 1;
-    }
-
-    while (find == 0) {
-        if (temp_file->filename == filename) {
-            printf("El archivo %s ya está publicado en la lista del usuario %s.\n", filename, username);
-            free(new_file);
-            return 3;
-        } else if (temp_file->next == NULL) {   // Caso de hallar el final de la lista de archivos
-            find = 1;
-        } else {
-            temp_file = temp_file->next;
-        }
     }
 
     // Se asignan los valores indicados por el usuario a la nueva estructura
     strcpy(new_file->filename, filename);
     strcpy(new_file->description, description);
-    temp_file->next = new_file;
+    new_file->next = NULL;
+
+    if (temp->files == NULL) {
+        // Primera inserción
+        temp->files = new_file;
+    } else {
+        struct file *temp_file = temp->files;
+        while (temp_file->next != NULL) {
+            if (strcmp(temp_file->filename, filename) == 0) {
+                printf("El archivo %s ya está publicado en la lista del usuario %s.\n", filename, username);
+                free(new_file);
+                return 3;
+            }
+            temp_file = temp_file->next;
+        }
+        // Verifica el último nodo también
+        if (strcmp(temp_file->filename, filename) == 0) {
+            printf("El archivo %s ya está publicado en la lista del usuario %s.\n", filename, username);
+            free(new_file);
+            return 3;
+        }
+
+        temp_file->next = new_file;
+    }
+
     temp->N_files++;
-    //new_file->next = NULL; //TODO: ¿?
+
+    // TODO: DEBUGGING
+    temp = USERS;
+    // Bucle para recorrer la lista enlazada
+    while (temp != NULL) {
+        printf("Usuario: %s\n", temp->username);
+        printf("\tHost: %s\n", temp->host);
+        printf("\tPort: %d\n", temp->port);
+        printf("\tN_files: %d\n", temp->N_files);
+
+        printf("\tArchivos:\n");
+        struct file *temp_file = temp->files;
+        if (temp_file == NULL) {
+            printf("\t\t<ningún archivo publicado>\n");
+        }
+        while (temp_file != NULL) {
+            printf("\t\tArchivo %s\n\t\t\tDescripción: %s\n", temp_file->filename, temp_file->description);
+            temp_file = temp_file->next;
+        }
+        temp = temp->next;
+    }
+
 
     return 0;
 };
@@ -249,7 +288,7 @@ int delete_file(char *username, char *filename) {
     struct user *temp = USERS;
 
     while (find == 0) {
-        if (strcmp(temp->username, username)) {
+        if (strcmp(temp->username, username) == 0) {
             find=1;
         } else if (temp->next == NULL) {
             printf("El usuario %s no está en la lista.\n", username);
@@ -277,7 +316,7 @@ int delete_file(char *username, char *filename) {
     find = 0;
 
     while (find == 0) {
-        if (temp_file->filename == filename) {
+        if (strcmp(temp_file->filename, filename) == 0) {
             find = 1;
         } else if (temp_file->next == NULL) {   // Caso de hallar el final de la lista de archivos
             printf("El archivo %s no está publicado en la lista del usuario %s.\n", filename, username);
@@ -301,7 +340,7 @@ int delete_file(char *username, char *filename) {
     return 0;
 };
 
-int list_users(char *username, int *counter, struct user_data_item* user_list) {
+int list_users(char *username, int *counter, struct user_data_item **user_list) {
                                                 // La pregunta es cómo se va a pasar toda la información leída ¿leerlos de uno en uno desde el servidor?
     // 1. Comprobación de la corrección de los argumentos
     if (check_size256(username) < 0 || check_blanks(username) < 0) {
@@ -323,7 +362,7 @@ int list_users(char *username, int *counter, struct user_data_item* user_list) {
     struct user *temp = USERS;
 
     while (find == 0) {
-        if (strcmp(temp->username, username)) {
+        if (strcmp(temp->username, username) == 0) {
             find=1;
         } else if (temp->next == NULL) {
             printf("El usuario %s no está en la lista.\n", username);
@@ -343,7 +382,7 @@ int list_users(char *username, int *counter, struct user_data_item* user_list) {
     // Declaración de variables auxiliares para recorrer la lista de usuarios
     int contador = 0;
     temp = USERS;
-    struct user_data_item *temp_new_user = user_list;
+    struct user_data_item *temp_new_user = NULL;
 
     while (temp != NULL) {
         if(temp->port != -1){ //si el usuario está conectado...
@@ -360,13 +399,12 @@ int list_users(char *username, int *counter, struct user_data_item* user_list) {
             strcpy(new_user->host, temp->host);
             new_user->port = temp->port;
 
-            if (user_list == NULL) {
-                //lista resultado vacía -insercción de primer elemento
-                user_list = new_user;
-
+            if (*user_list == NULL) {
+                *user_list = new_user;
+                temp_new_user = new_user;
             } else {
-                // insertar el nuevo elemento al final de la lista enlazada
                 temp_new_user->next = new_user;
+                temp_new_user = new_user;
             }
             contador++;
         }
@@ -378,7 +416,7 @@ int list_users(char *username, int *counter, struct user_data_item* user_list) {
     return 0;
 };
 
-int list_content(char *username, char *searched_username, int * counter, struct file* user_files) {     // username es el que realiza la petición// TODO: mismo problema de list_users() con el envío de la info + también hay que devolver un contador como en list_users()
+int list_content(char *username, char *searched_username, int * counter, struct file** user_files) {     // username es el que realiza la petición// TODO: mismo problema de list_users() con el envío de la info + también hay que devolver un contador como en list_users()
     // 1. Comprobación de la corrección de los argumentos
     if (check_size256(username) < 0 || check_size256(searched_username) < 0 ||
         check_blanks(username) < 0 || check_blanks(searched_username) < 0) {
@@ -399,15 +437,15 @@ int list_content(char *username, char *searched_username, int * counter, struct 
     int find_searched = 0;
     struct user *temp = USERS;
 
-    while (find_user == 0 || find_searched==0) {
-        if (strcmp(temp->username, username)) {
+    while (find_user == 0 || find_searched == 0) {
+        if (strcmp(temp->username, username) == 0) {
             if (temp->port == -1) {
                 printf("El usuario %s no está conectado al servicio", username);
                 return 2;
             }
             find_user =1;
         }
-        if (temp->username == searched_username) {
+        if (strcmp(temp->username, searched_username) == 0) {
           find_searched = 1;
         }
 
@@ -434,7 +472,7 @@ int list_content(char *username, char *searched_username, int * counter, struct 
     }
 
     *counter = temp->N_files;
-    user_files = temp->files;
+    *user_files = temp->files;
     return 0;
 };
 
@@ -458,7 +496,7 @@ int disconnect_user(char *username) {
     struct user *temp = USERS;
 
     while (find == 0) {
-        if (strcmp(temp->username, username)) {
+        if (strcmp(temp->username, username) == 0) {
             find=1;
         } else if (temp->next == NULL) {
             printf("El usuario %s no está en la lista.\n", username);
@@ -483,16 +521,22 @@ int disconnect_user(char *username) {
 
 
 int unregister_user(char *username) {
+    printf("hola");
     if (check_size256(username) < 0 || check_blanks(username) < 0) {
         return 2;
     }
-
+    printf("hola");
     struct user *temp = USERS;
     struct user *prev = NULL;
-
+    printf("hola");
     while (temp != NULL) {
         if (strcmp(username, temp->username) == 0) {
             // Usuario encontrado
+            if(temp->port == -1){
+                // No está desconectado
+                printf("El usuario %s sigue estando conectado\n", username);
+                return 2;
+            }
             if (prev == NULL) {
                 // Es el primer usuario
                 USERS = temp->next;

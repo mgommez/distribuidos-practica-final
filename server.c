@@ -95,9 +95,10 @@ void *tratar_peticion(void *sd_client_void) {
             closeSocket(sd_client);
             pthread_exit((void *) -2);
         }
+        printf("hola");
         //2. Llamada a la función
         r = unregister_user(p->username);
-
+        printf("hola");
         //3. Escritura del resultado por socket
         sprintf(buffer, "%d", r);
         ret = writeLine(sd_client, buffer);
@@ -120,6 +121,8 @@ void *tratar_peticion(void *sd_client_void) {
             closeSocket(sd_client);
             pthread_exit((void *) -2);
         }
+
+        // obtención del puerto de escucha del cliente
         ret = readLine(sd_client, buffer, sizeof(buffer)); //lectura puerto
         if (ret < 0) {
             perror("Error al leer parámetro del cliente: port");
@@ -127,8 +130,6 @@ void *tratar_peticion(void *sd_client_void) {
             closeSocket(sd_client);
             pthread_exit((void *) -2);
         }
-        memset(buffer, '\0', sizeof(buffer));
-
         p->port = strtol(buffer, &endptr, 10);
         if (endptr[0] != '\0') {
             printf("Error: %s no es un número en base %d\n", buffer, 10);
@@ -138,7 +139,6 @@ void *tratar_peticion(void *sd_client_void) {
         }
         memset(buffer, '\0', sizeof(buffer));
 
-
         //obtención de la ip del cliente
         ret = getClientIp(sd_client, p->host);
         if (ret < 0) {
@@ -147,7 +147,6 @@ void *tratar_peticion(void *sd_client_void) {
             closeSocket(sd_client);
             pthread_exit((void *) -1);
         }
-
 
         //2. Llamada a la función
         r = connect_user(p->username, p->host, p->port);
@@ -252,7 +251,13 @@ void *tratar_peticion(void *sd_client_void) {
 
         //2. Llamada a la función
         struct data *d = (struct data *) malloc(sizeof(struct data)); //TODO: revisar frees
-        r = list_users(p->username,&(d->counter), d->user_list); //se recibe una lista de estructuras tipo user, ip, puerto, next con los usuarios conectados
+        if (NULL == d) {
+            perror("Error al asignar memoria para los datos");
+            closeSocket(sd_client);
+            pthread_exit((void *) -2);
+        }
+
+        r = list_users(p->username, &(d->counter), &(d->user_list)); //se recibe una lista de estructuras tipo user, ip, puerto, next con los usuarios conectados
 
         //3. Escritura del resultado por socket
         sprintf(buffer, "%d", r);
@@ -287,8 +292,13 @@ void *tratar_peticion(void *sd_client_void) {
                   if(ret<0){
                       perror("Error en writeLine del servidor LIST_USERS");
                       free(p);
-                      free(d);
+                      while (current_user != NULL) {
+                          prev_user = current_user;
+                          current_user = current_user->next;
+                          free(prev_user);
+                      }
                       free(current_user);
+                      free(d);
                       closeSocket(sd_client);
                       pthread_exit((void *) -2);
                   }
@@ -346,8 +356,8 @@ void *tratar_peticion(void *sd_client_void) {
         }
         //2. Llamada a la función
         struct data *d = (struct data *) malloc(sizeof(struct data)); //TODO: revisar frees
-        r = list_content(p->username, p->user_wanted, &(d->counter), d->file_list); //se recibe una lista de estructuras tipo filename, next con los ficheros del usuario
-        //TODO: update users.c
+        r = list_content(p->username, p->user_wanted, &(d->counter), &(d->file_list)); //se recibe una lista de estructuras tipo filename, next con los ficheros del usuario
+        //TODO: update users.c (qué es esto?)
 
         //3. Escritura del resultado por socket
         sprintf(buffer, "%d", r);
