@@ -6,6 +6,31 @@
 
 struct user *USERS = NULL;
 
+void print_list(){
+   // TODO: DEBUGGING
+
+    struct user *temp = USERS;
+    // Bucle para recorrer la lista enlazada
+    while (temp != NULL) {
+        printf("Usuario: %s\n", temp->username);
+        printf("\tHost: %s\n", temp->host);
+        printf("\tPort: %d\n", temp->port);
+        printf("\tN_files: %d\n", temp->N_files);
+
+        printf("\tArchivos:\n");
+        struct file *temp_file = temp->files;
+        if (temp_file == NULL) {
+            printf("\t\t<ningún archivo publicado>\n");
+        }
+        while (temp_file != NULL) {
+            printf("\t\tArchivo %s\n\t\t\tDescripción: %s\n", temp_file->filename, temp_file->description);
+            temp_file = temp_file->next;
+        }
+        temp = temp->next;
+    }
+
+}
+
 //funciones de validación de argumentos
 int check_size256(char *value) {
     // Comprobación de longitud de un valor (no más de 255 caracteres)
@@ -88,6 +113,7 @@ int register_user(char *username) {
     strcpy(new_user->username, username);
     new_user->port = -1; // porque aún no está conectado
     new_user->N_files = 0;
+    new_user->files = NULL;
 
     if (empty) {
         USERS = new_user;
@@ -96,17 +122,6 @@ int register_user(char *username) {
         temp->next = new_user;
     }
     new_user->next = NULL;
-
-    // TODO: DEBUGGING
-    temp = USERS;
-    // Bucle para recorrer la lista enlazada
-    while (temp != NULL) {
-        printf("Usuario: %s\n", temp->username);
-        printf("\tHost: %s\n", temp->host);
-        printf("\tPort: %d\n", temp->port);
-        printf("\tN_files: %d\n", temp->N_files);
-        temp = temp->next;
-    }
 
     return 0;
 };
@@ -148,17 +163,6 @@ int connect_user(char *username, char *host, int port) {
         strcpy(temp->host, host);
         temp->port = port;
     };
-
-    // TODO: DEBUGGING
-    temp = USERS;
-    // Bucle para recorrer la lista enlazada
-    while (temp != NULL) {
-        printf("Usuario: %s\n", temp->username);
-        printf("\tHost: %s\n", temp->host);
-        printf("\tPort: %d\n", temp->port);
-        printf("\tN_files: %d\n", temp->N_files);
-        temp = temp->next;
-    }
 
     return 0;
 };
@@ -242,28 +246,6 @@ int publish_file(char *username, char *filename, char *description) {
     }
 
     temp->N_files++;
-
-    // TODO: DEBUGGING
-    temp = USERS;
-    // Bucle para recorrer la lista enlazada
-    while (temp != NULL) {
-        printf("Usuario: %s\n", temp->username);
-        printf("\tHost: %s\n", temp->host);
-        printf("\tPort: %d\n", temp->port);
-        printf("\tN_files: %d\n", temp->N_files);
-
-        printf("\tArchivos:\n");
-        struct file *temp_file = temp->files;
-        if (temp_file == NULL) {
-            printf("\t\t<ningún archivo publicado>\n");
-        }
-        while (temp_file != NULL) {
-            printf("\t\tArchivo %s\n\t\t\tDescripción: %s\n", temp_file->filename, temp_file->description);
-            temp_file = temp_file->next;
-        }
-        temp = temp->next;
-    }
-
 
     return 0;
 };
@@ -436,6 +418,7 @@ int list_content(char *username, char *searched_username, int * counter, struct 
     int find_user = 0;
     int find_searched = 0;
     struct user *temp = USERS;
+    struct user *aux_user = NULL;
 
     while (find_user == 0 || find_searched == 0) {
         if (strcmp(temp->username, username) == 0) {
@@ -447,6 +430,7 @@ int list_content(char *username, char *searched_username, int * counter, struct 
         }
         if (strcmp(temp->username, searched_username) == 0) {
           find_searched = 1;
+          aux_user=temp;
         }
 
         if (temp->next == NULL) {
@@ -467,12 +451,12 @@ int list_content(char *username, char *searched_username, int * counter, struct 
     // Una vez hallado el usuario se devuelven sus archivos y el número registrado
 
     // Caso de usuario sin archivos publicados
-    if (temp->files == NULL) {
+    if (aux_user->files == NULL) {
         printf("El usuario %s no ha publicado ningún archivo.\n", searched_username);
     }
 
-    *counter = temp->N_files;
-    *user_files = temp->files;
+    *counter = aux_user->N_files;
+    *user_files = aux_user->files;
     return 0;
 };
 
@@ -521,18 +505,17 @@ int disconnect_user(char *username) {
 
 
 int unregister_user(char *username) {
-    printf("hola");
     if (check_size256(username) < 0 || check_blanks(username) < 0) {
         return 2;
     }
-    printf("hola");
+
     struct user *temp = USERS;
     struct user *prev = NULL;
-    printf("hola");
+
     while (temp != NULL) {
         if (strcmp(username, temp->username) == 0) {
             // Usuario encontrado
-            if(temp->port == -1){
+            if(temp->port != -1){
                 // No está desconectado
                 printf("El usuario %s sigue estando conectado\n", username);
                 return 2;
@@ -547,16 +530,17 @@ int unregister_user(char *username) {
             // Liberar memoria dinámica
             if (temp->files) {
                 struct file *current_file = temp->files;
+                struct file *next_file;
                 while (current_file != NULL) {
-                    struct file *next_file = current_file->next;
+                    next_file = current_file->next;
                     free(current_file);
                     current_file = next_file;
                 }
             }
+            //Liberar la memoria del elemento eliminado
             free(temp);
             return 0;
         }
-
         prev = temp;
         temp = temp->next;
     }

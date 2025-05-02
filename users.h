@@ -28,6 +28,10 @@ struct user_data_item {
   struct user_data_item *next;
 };
 
+//debug
+void print_list();
+
+//Funcionalidades
 int register_user(char *username);
 
 int connect_user(char *username, char*host, int port);

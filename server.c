@@ -95,10 +95,10 @@ void *tratar_peticion(void *sd_client_void) {
             closeSocket(sd_client);
             pthread_exit((void *) -2);
         }
-        printf("hola");
+
         //2. Llamada a la función
         r = unregister_user(p->username);
-        printf("hola");
+
         //3. Escritura del resultado por socket
         sprintf(buffer, "%d", r);
         ret = writeLine(sd_client, buffer);
@@ -355,7 +355,12 @@ void *tratar_peticion(void *sd_client_void) {
             pthread_exit((void *) -2);
         }
         //2. Llamada a la función
+
+        //Inicializar estrcuturas auxiliares
         struct data *d = (struct data *) malloc(sizeof(struct data)); //TODO: revisar frees
+        d->file_list = NULL;
+
+        //Llamada a la función
         r = list_content(p->username, p->user_wanted, &(d->counter), &(d->file_list)); //se recibe una lista de estructuras tipo filename, next con los ficheros del usuario
         //TODO: update users.c (qué es esto?)
 
@@ -384,22 +389,19 @@ void *tratar_peticion(void *sd_client_void) {
             }
             memset(buffer, '\0', sizeof(buffer));
 
-            struct file *current_file = d->file_list;
-            struct file *prev_file;
+            struct file *temp = d->file_list;
 
             for(int i = 0; i < d->counter; i++) {
-                ret = writeLine(sd_client, current_file->filename);
+                ret = writeLine(sd_client, temp->filename);
                 if(ret < 0){
                     perror("Error en writeLine del servidor LIST_CONTENT");
                     free(p);
                     free(d);
-                    free(current_file);
                     closeSocket(sd_client);
                     pthread_exit((void *) -2);
                 }
-                prev_file = current_file;
-                current_file = current_file->next;
-                free(prev_file); // <-- liberar cada uno
+                temp = temp->next;
+
             }//end for
 
             free(d);
@@ -435,8 +437,9 @@ void *tratar_peticion(void *sd_client_void) {
     }
 
     //Final de ejecución
-    printf("OPERATION %s FROM %s\n", op, p->username);
+    printf("s> OPERATION %s FROM %s\n", op, p->username);
 
+    print_list();
     free(p);
     closeSocket(sd_client);  // El hilo cierra el socket al final
     pthread_exit(NULL);
@@ -488,7 +491,7 @@ int main(int argc, char *argv[]) {
     // Convertir la dirección IP al formato string
     ip_address = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0]));
 
-    printf("init server %s: %d \n", ip_address, port_num);
+    printf("s> init server %s: %d \n", ip_address, port_num);
 
 
     //2. Configuración del servidor
