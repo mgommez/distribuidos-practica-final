@@ -1,5 +1,6 @@
 // Archivo para el manejo de la recepción de mensajes de clientes
-// y llamadas a las funciones de "claves.c"
+// y llamadas a las funciones de "users.c".
+// Envío adicional de peticiones al servicio de logs con RPCs.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,15 +12,23 @@
 #include "users.h"
 #include "message.h"
 
-// Se elimina busy, pthread_cond y su mutex ya que no son necesarios
+
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 
 // Declaración variable de puerto
 int assigned_port = 0;
 char *port;
 
+int send_log(struct log_data) {
+    // 1. Creación de la estructura de log
 
-//funcionalidad principal
+    // 2. Creación del cliente RPC
+
+    // 3. Llamada a la función RPC del servidor RPC
+
+    // 4. Cierre y devolución del resultado de la operación
+
+}
 
 void *tratar_peticion(void *sd_client_void) {
 
