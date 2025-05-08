@@ -30,7 +30,8 @@ void *tratar_peticion(void *sd_client_void) {
     int ret;
     int r;
     char op[20];
-    char buffer[257]; //TODO: revisar tamaño del buffer
+    char date[19];
+    char buffer[257];
     char *endptr;
 
     struct peticion *p = (struct peticion *) malloc(sizeof(struct peticion));
@@ -58,6 +59,19 @@ void *tratar_peticion(void *sd_client_void) {
 
     strcpy(op, buffer);
     memset(buffer, '\0', sizeof(buffer));
+
+    // Lectura de la fecha de la petición
+    if (readLine(sd_client, buffer, sizeof(buffer)) < 0) {
+        perror("Error al leer la petición del cliente: código de operación");
+        free(p);
+        closeSocket(sd_client);
+        pthread_exit((void *) -2);
+    }
+
+    strcpy(date, buffer);
+    printf("RECIBIDA LA FECHA DEL CLIENTE: %s\n", date);
+    memset(buffer, '\0', sizeof(buffer));
+
 
     // Llamada a la operación según el código recibido
     if(strcmp(op, "REGISTER") == 0){
