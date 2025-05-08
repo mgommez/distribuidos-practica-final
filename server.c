@@ -439,7 +439,6 @@ void *tratar_peticion(void *sd_client_void) {
     //Final de ejecución
     printf("s> OPERATION %s FROM %s\n", op, p->username);
 
-    print_list();
     free(p);
     closeSocket(sd_client);  // El hilo cierra el socket al final
     pthread_exit(NULL);

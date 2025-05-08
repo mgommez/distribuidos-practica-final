@@ -6,30 +6,6 @@
 
 struct user *USERS = NULL;
 
-void print_list(){
-   // TODO: DEBUGGING
-
-    struct user *temp = USERS;
-    // Bucle para recorrer la lista enlazada
-    while (temp != NULL) {
-        printf("Usuario: %s\n", temp->username);
-        printf("\tHost: %s\n", temp->host);
-        printf("\tPort: %d\n", temp->port);
-        printf("\tN_files: %d\n", temp->N_files);
-
-        printf("\tArchivos:\n");
-        struct file *temp_file = temp->files;
-        if (temp_file == NULL) {
-            printf("\t\t<ningún archivo publicado>\n");
-        }
-        while (temp_file != NULL) {
-            printf("\t\tArchivo %s\n\t\t\tDescripción: %s\n", temp_file->filename, temp_file->description);
-            temp_file = temp_file->next;
-        }
-        temp = temp->next;
-    }
-
-}
 
 //funciones de validación de argumentos
 int check_size256(char *value) {
