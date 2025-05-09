@@ -33,9 +33,12 @@ int send_log(char *username, char *op, char *file, char *date_time) {
     if (strcmp(op, "PUBLISH") == 0 || strcmp(op, "DELETE") == 0) {
         if (file != NULL) {
             strcpy(l->fileName, file);
+            printf("%s", l->fileName);
         } // else{ return -1;}
     }
     strcpy(l->date_time, date_time);
+
+    printf("%s  %s  %s", l->username, l->op, l->date_time);
 
     // 2. Creación del cliente RPC
     CLIENT *clnt;
