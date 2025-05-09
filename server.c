@@ -8,38 +8,84 @@
 #include <strings.h>
 #include <signal.h>
 #include <pthread.h>
+#include <stdint.h>
 #include "comm.h"
 #include "users.h"
 #include "message.h"
+#include "log_rpc.h"
 
 
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 
 // Declaración variable de puerto
-int assigned_port = 0;
-char *port;
+int assigned_host = 0;
+char *host;
 
-int send_log(struct log_data) {
+int send_log(char *username, char *op, char *file, char *date_time) {
     // 1. Creación de la estructura de log
+    struct log_data *l = (struct log_data *) malloc(sizeof(struct log_data));
+    if (l == NULL) {
+        return -1;
+    }
+
+    strcpy(l->username, username);
+    strcpy(l->op, op);
+    if (strcmp(op, "PUBLISH") == 0 || strcmp(op, "DELETE") == 0) {
+        if (file != NULL) {
+            strcpy(l->fileName, file);
+        } // else{ return -1;}
+    }
+    strcpy(l->date_time, date_time);
 
     // 2. Creación del cliente RPC
+    CLIENT *clnt;
+    enum clnt_stat retval;
+    int result;
 
-    // 3. Llamada a la función RPC del servidor RPC
+    // Asignación de dirección IP de host si no está ya asignado
+    if (assigned_host == 0) {
+        host = getenv("LOG_RPC_IP");
+        if (host == NULL){
+            printf("LOG_RPC_IP no definida\n");
+            free(l);
+            return -1;
+        }
+        assigned_host = 1;
+    }
+
+    // 3. Localización del servidor
+    clnt = clnt_create (host, LOG, LOGVER, "udp");
+    if (clnt == NULL) {
+        free(l);
+        clnt_pcreateerror (host);
+        return -2; // error de comunicación
+    }
+
+    // 4. Invocación al procedimiento remoto de log
+    retval = logging_1(*l, &result, clnt);
+    if (retval != RPC_SUCCESS) {
+        free(l);
+        clnt_perror (clnt, "call failed");
+        clnt_destroy (clnt);
+        return -2;
+    }
 
     // 4. Cierre y devolución del resultado de la operación
-
+    clnt_destroy (clnt);
+    free(l);
+    return result;
 }
 
 void *tratar_peticion(void *sd_client_void) {
 
-    // 1. Extración del descriptor de socket y liberación de memoria dinámica
+    // 1. Extracción del descriptor de socket y liberación de memoria dinámica
     int sd_client = *(int *)sd_client_void;
     free(sd_client_void);
 
     int ret;
     int r;
     char op[20];
-    char date[19];
+    char date[20];
     char buffer[257];
     char *endptr;
 
@@ -84,64 +130,98 @@ void *tratar_peticion(void *sd_client_void) {
 
     // Llamada a la operación según el código recibido
     if(strcmp(op, "REGISTER") == 0){
-        //1. Lectura de parámetros por socket
+        // Protección de sección crítica
+        pthread_mutex_lock(&m);
+
+        // 1. Lectura de parámetros por socket
         ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
         if (ret < 0) {
             perror("Error al leer parámetro del cliente: username");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
 
-        //2. Llamada a la función
+        // 2. Envío a servidor RPC
+        int result = send_log(p->username, op, NULL, date);
+        if (result != 0) {
+            free(p);
+            closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
+            pthread_exit((void *)(intptr_t) result);
+        }
+
+        // 3. Llamada a la función
         r = register_user(p->username);
 
-        //3. Escritura del resultado por socket
+        // 4. Escritura del resultado por socket
         sprintf(buffer, "%d", r);
         ret = writeLine(sd_client, buffer);
         if(ret<0){
             perror("Error en writeLine del servidor REGISTER");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
         memset(buffer, '\0', sizeof(buffer));
+        pthread_mutex_unlock(&m);
 
     } //end REGISTER
 
     else if( strcmp(op, "UNREGISTER") == 0){
+        // Protección de sección crítica
+        pthread_mutex_lock(&m);
+
         //1. Lectura de parámetros por socket
         ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
         if (ret < 0) {
             perror("Error al leer parámetro del cliente: username");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
 
-        //2. Llamada a la función
+        // 2. Envío a servidor RPC
+        int result = send_log(p->username, op, NULL, date);
+        if (result != 0) {
+            free(p);
+            closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
+            pthread_exit((void *)(intptr_t) result);
+        }
+
+        // 3. Llamada a la función
         r = unregister_user(p->username);
 
-        //3. Escritura del resultado por socket
+        // 4. Escritura del resultado por socket
         sprintf(buffer, "%d", r);
         ret = writeLine(sd_client, buffer);
         if(ret<0){
             perror("Error en writeLine del servidor UNREGISTER");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
         memset(buffer, '\0', sizeof(buffer));
+        pthread_mutex_unlock(&m);
 
     } //end UNREGISTER
 
     else if( strcmp(op, "CONNECT") == 0){
+        // Protección de sección crítica
+        pthread_mutex_lock(&m);
+
         //1. Lectura de parámetros por socket
         ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
         if (ret < 0) {
             perror("Error al leer parámetro del cliente: username");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
 
@@ -151,6 +231,7 @@ void *tratar_peticion(void *sd_client_void) {
             perror("Error al leer parámetro del cliente: port");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
         p->port = strtol(buffer, &endptr, 10);
@@ -158,6 +239,7 @@ void *tratar_peticion(void *sd_client_void) {
             printf("Error: %s no es un número en base %d\n", buffer, 10);
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -1);
         }
         memset(buffer, '\0', sizeof(buffer));
@@ -168,32 +250,48 @@ void *tratar_peticion(void *sd_client_void) {
             perror("Error al obtener la ip del cliente");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -1);
         }
 
-        //2. Llamada a la función
+        // 2. Envío a servidor RPC
+        int result = send_log(p->username, op, NULL, date);
+        if (result != 0) {
+            free(p);
+            closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
+            pthread_exit((void *)(intptr_t) result);
+        }
+
+        // 3. Llamada a la función
         r = connect_user(p->username, p->host, p->port);
 
-        //3. Escritura del resultado por socket
+        // 4. Escritura del resultado por socket
         sprintf(buffer, "%d", r);
         ret = writeLine(sd_client, buffer);
         if(ret<0){
             perror("Error en writeLine del servidor CONNECT");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
         memset(buffer, '\0', sizeof(buffer));
+        pthread_mutex_unlock(&m);
 
     } //end CONNECT
 
     else if( strcmp(op, "PUBLISH") == 0){
+        // Protección de sección crítica
+        pthread_mutex_lock(&m);
+
         //1. Lectura de parámetros por socket
         ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
         if (ret < 0) {
             perror("Error al leer parámetro del cliente: username");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
 
@@ -202,6 +300,7 @@ void *tratar_peticion(void *sd_client_void) {
             perror("Error al leer parámetro del cliente: filename");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
 
@@ -210,32 +309,48 @@ void *tratar_peticion(void *sd_client_void) {
             perror("Error al leer parámetro del cliente: description");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
 
-        //2. Llamada a la función
+        // 2. Envío a servidor RPC
+        int result = send_log(p->username, op, p->filename, date);
+        if (result != 0) {
+            free(p);
+            closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
+            pthread_exit((void *)(intptr_t) result);
+        }
+
+        // 3. Llamada a la función
         r = publish_file(p->username, p->filename, p->description);
 
-        //3. Escritura del resultado por socket
+        // 4. Escritura del resultado por socket
         sprintf(buffer, "%d", r);
         ret = writeLine(sd_client, buffer);
         if(ret<0){
             perror("Error en writeLine del servidor PUBLISH");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
         memset(buffer, '\0', sizeof(buffer));
+        pthread_mutex_unlock(&m);
 
     } //end PUBLISH
 
     else if( strcmp(op, "DELETE") == 0){
+        // Protección de sección crítica
+        pthread_mutex_lock(&m);
+
         //1. Lectura de parámetros por socket
         ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
         if (ret < 0) {
             perror("Error al leer parámetro del cliente: username");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
 
@@ -244,45 +359,72 @@ void *tratar_peticion(void *sd_client_void) {
             perror("Error al leer parámetro del cliente: filename");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
 
-        //2. Llamada a la función
+        // 2. Envío a servidor RPC
+        int result = send_log(p->username, op, p->filename, date);
+        if (result != 0) {
+            free(p);
+            closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
+            pthread_exit((void *)(intptr_t) result);
+        }
+
+        // 3. Llamada a la función
         r = delete_file(p->username, p->filename);
 
-        //3. Escritura del resultado por socket
+        // 4. Escritura del resultado por socket
         sprintf(buffer, "%d", r);
         ret = writeLine(sd_client, buffer);
         if(ret<0){
             perror("Error en writeLine del servidor DELETE");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
         memset(buffer, '\0', sizeof(buffer));
+        pthread_mutex_unlock(&m);
     } //end DELETE
 
     else if( strcmp(op, "LIST_USERS") == 0){
-        //1. Lectura de parámetros por socket
+        // Protección de sección crítica
+        pthread_mutex_lock(&m);
+
+        // 1. Lectura de parámetros por socket
         ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
         if (ret < 0) {
             perror("Error al leer parámetro del cliente: username");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
 
-        //2. Llamada a la función
+        // 2. Envío a servidor RPC
+        int result = send_log(p->username, op, NULL, date);
+        if (result != 0) {
+            free(p);
+            closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
+            pthread_exit((void *)(intptr_t) result);
+        }
+
+        // 3. Llamada a la función
         struct data *d = (struct data *) malloc(sizeof(struct data)); //TODO: revisar frees
         if (NULL == d) {
             perror("Error al asignar memoria para los datos");
+            free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
 
         r = list_users(p->username, &(d->counter), &(d->user_list)); //se recibe una lista de estructuras tipo user, ip, puerto, next con los usuarios conectados
 
-        //3. Escritura del resultado por socket
+        // 4. Escritura del resultado por socket
         sprintf(buffer, "%d", r);
         ret = writeLine(sd_client, buffer); //escritura byte de resultado
         if(ret<0){
@@ -290,6 +432,7 @@ void *tratar_peticion(void *sd_client_void) {
             free(p);
             free(d);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
         memset(buffer, '\0', sizeof(buffer));
@@ -303,6 +446,7 @@ void *tratar_peticion(void *sd_client_void) {
                   free(p);
                   free(d);
                   closeSocket(sd_client);
+                  pthread_mutex_unlock(&m);
                   pthread_exit((void *) -2);
               }
               memset(buffer, '\0', sizeof(buffer));
@@ -323,6 +467,7 @@ void *tratar_peticion(void *sd_client_void) {
                       free(current_user);
                       free(d);
                       closeSocket(sd_client);
+                      pthread_mutex_unlock(&m);
                       pthread_exit((void *) -2);
                   }
 
@@ -333,6 +478,7 @@ void *tratar_peticion(void *sd_client_void) {
                       free(d);
                       free(current_user);
                       closeSocket(sd_client);
+                      pthread_mutex_unlock(&m);
                       pthread_exit((void *) -2);
                   }
 
@@ -344,6 +490,7 @@ void *tratar_peticion(void *sd_client_void) {
                       free(d);
                       free(current_user);
                       closeSocket(sd_client);
+                      pthread_mutex_unlock(&m);
                       pthread_exit((void *) -2);
                   }
                   memset(buffer, '\0', sizeof(buffer));
@@ -357,16 +504,21 @@ void *tratar_peticion(void *sd_client_void) {
               free(d);
 
         } //end if
+        pthread_mutex_unlock(&m);
 
     } //end LIST_USERS
 
     else if( strcmp(op, "LIST_CONTENT") == 0){
-        //1. Lectura de parámetros por socket
+        // Protección de sección crítica
+        pthread_mutex_lock(&m);
+
+        // 1. Lectura de parámetros por socket
         ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username emisor
         if (ret < 0) {
             perror("Error al leer parámetro del cliente: username");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
 
@@ -375,19 +527,36 @@ void *tratar_peticion(void *sd_client_void) {
             perror("Error al leer parámetro del cliente: user_wanted");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
-        //2. Llamada a la función
+
+        // 2. Envío a servidor RPC
+        int result = send_log(p->username, op, NULL, date);
+        if (result != 0) {
+            free(p);
+            closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
+            pthread_exit((void *)(intptr_t) result);
+        }
+
+        // 3. Llamada a la función
 
         //Inicializar estrcuturas auxiliares
-        struct data *d = (struct data *) malloc(sizeof(struct data)); //TODO: revisar frees
+        struct data *d = (struct data *) malloc(sizeof(struct data));
+        if (NULL == d) {
+            perror("Error al asignar memoria para los datos");
+            free(p);
+            closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
+            pthread_exit((void *) -2);
+        }
         d->file_list = NULL;
 
         //Llamada a la función
         r = list_content(p->username, p->user_wanted, &(d->counter), &(d->file_list)); //se recibe una lista de estructuras tipo filename, next con los ficheros del usuario
-        //TODO: update users.c (qué es esto?)
 
-        //3. Escritura del resultado por socket
+        // 4. Escritura del resultado por socket
         sprintf(buffer, "%d", r);
         ret = writeLine(sd_client, buffer); //escritura byte de resultado
         if(ret<0){
@@ -395,6 +564,7 @@ void *tratar_peticion(void *sd_client_void) {
             free(p);
             free(d);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
         memset(buffer, '\0', sizeof(buffer));
@@ -408,6 +578,7 @@ void *tratar_peticion(void *sd_client_void) {
                 free(p);
                 free(d);
                 closeSocket(sd_client);
+                pthread_mutex_unlock(&m);
                 pthread_exit((void *) -2);
             }
             memset(buffer, '\0', sizeof(buffer));
@@ -421,6 +592,7 @@ void *tratar_peticion(void *sd_client_void) {
                     free(p);
                     free(d);
                     closeSocket(sd_client);
+                    pthread_mutex_unlock(&m);
                     pthread_exit((void *) -2);
                 }
                 temp = temp->next;
@@ -429,30 +601,48 @@ void *tratar_peticion(void *sd_client_void) {
 
             free(d);
         }//end if
+        pthread_mutex_unlock(&m);
 
     }//end LIST_CONTENT
 
     else if( strcmp(op, "DISCONNECT") == 0){
-        //1. Lectura de parámetros por socket
+        // Protección de sección crítica
+        pthread_mutex_lock(&m);
+
+        // 1. Lectura de parámetros por socket
         ret = readLine(sd_client, p->username, sizeof(p->username)); //lectura username
         if (ret < 0) {
             perror("Error al leer parámetro del cliente: username");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
-        //2. Llamada a la función
+
+        // 2. Envío a servidor RPC
+        int result = send_log(p->username, op, NULL, date);
+        if (result != 0) {
+            free(p);
+            closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
+            pthread_exit((void *)(intptr_t) result);
+        }
+
+        // 3. Llamada a la función
         r = disconnect_user(p->username);
 
-        //3. Escritura del resultado por socket
+        // 4. Escritura del resultado por socket
         sprintf(buffer, "%d", r);
         ret = writeLine(sd_client, buffer);
         if(ret<0){
             perror("Error en writeLine del servidor DISCONNECT");
             free(p);
             closeSocket(sd_client);
+            pthread_mutex_unlock(&m);
             pthread_exit((void *) -2);
         }
+        pthread_mutex_unlock(&m);
+
     }//end DISCONNECT
 
     else{
