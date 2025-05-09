@@ -62,8 +62,6 @@ int serverAccept ( int sd )
     struct sockaddr_in client_addr ;
     socklen_t size ;
 
-    printf("s> \n");
-
     size = sizeof(client_addr) ;
     sc = accept(sd, (struct sockaddr *)&client_addr, (socklen_t *)&size);
     if (sc < 0) {
