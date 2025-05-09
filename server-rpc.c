@@ -12,8 +12,10 @@ logging_1_svc(log_data l, int *result,  struct svc_req *rqstp)
 
     if (strcmp(l.op, "PUBLISH") == 0 || strcmp(l.op, "DELETE") == 0) {
         printf("%s  %s  %s  %s", l.username, l.op, l.fileName, l.date_time);
+        fflush(stdout);
     } else {
         printf("%s  %s   %s", l.username, l.op, l.date_time);
+        fflush(stdout);
     }
 
     *result = 0;
