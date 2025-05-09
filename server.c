@@ -756,7 +756,6 @@ int main(int argc, char *argv[]) {
     }
 
     closeSocket(sd_server);
-    printf("The End.\n");
 
 
     return 0;
