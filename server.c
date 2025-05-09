@@ -33,12 +33,9 @@ int send_log(char *username, char *op, char *file, char *date_time) {
     if (strcmp(op, "PUBLISH") == 0 || strcmp(op, "DELETE") == 0) {
         if (file != NULL) {
             strcpy(l->fileName, file);
-            printf("%s", l->fileName);
         } // else{ return -1;}
     }
     strcpy(l->date_time, date_time);
-
-    printf("%s  %s  %s", l->username, l->op, l->date_time);
 
     // 2. Creación del cliente RPC
     CLIENT *clnt;
@@ -127,9 +124,7 @@ void *tratar_peticion(void *sd_client_void) {
     }
 
     strcpy(date, buffer);
-    printf("RECIBIDA LA FECHA DEL CLIENTE: %s\n", date);
     memset(buffer, '\0', sizeof(buffer));
-
 
     // Llamada a la operación según el código recibido
     if(strcmp(op, "REGISTER") == 0){
