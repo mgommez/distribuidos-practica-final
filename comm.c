@@ -72,37 +72,6 @@ int serverAccept ( int sd )
     return sc ;
 }
 
-int clientSocket ( char *remote, int port )
-{
-    struct sockaddr_in server_addr ;
-    struct hostent *hp;
-    int sd, ret;
-
-    sd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sd < 0) {
-        perror("socket: ");
-        return -1;
-    }
-
-    hp = gethostbyname(remote) ;
-    if (hp == NULL) {
-        printf("Error en gethostbyname\n");
-        return -1;
-    }
-
-    bzero((char *)&server_addr, sizeof(server_addr));
-    memcpy (&(server_addr.sin_addr), hp->h_addr, hp->h_length);
-    server_addr.sin_family  = AF_INET;
-    server_addr.sin_port    = htons(port);
-
-    ret = connect(sd, (struct sockaddr *) &server_addr,  sizeof(server_addr));
-    if (ret < 0) {
-        perror("connect: ");
-        return -1;
-    }
-
-    return sd ;
-}
 
 int  closeSocket ( int sd)
 {
@@ -140,23 +109,6 @@ int sendMessage ( int socket, char * buffer, int len )
     return 0;
 }
 
-int recvMessage ( int socket, char *buffer, int len )
-{
-    int r;
-    int l = len;
-
-    do {
-        r = read(socket, buffer, l);
-        if (r < 0) {
-            return (-1); /* error */
-        }
-        l = l -r ;
-        buffer = buffer + r;
-
-    } while ((l>0) && (r>=0));
-
-    return 0;
-}
 
 ssize_t writeLine ( int fd, char *buffer )
 {

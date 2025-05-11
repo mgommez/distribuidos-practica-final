@@ -14,7 +14,7 @@ int check_size256(char *value) {
     int i=0;
     int end=0;
 
-    while (i<255 && end==0){
+    while (i<256 && end==0){
         if(value[i] == '\0'){
             end=1;
         }
@@ -474,7 +474,7 @@ int disconnect_user(char *username) {
 
     //3. Eliminar parámetros de conexión
 
-    memset(temp->host, '\0', sizeof(temp->host)); //TODO: solución temporal -> pendiente verificar comportamiento.
+    memset(temp->host, '\0', sizeof(temp->host));
     temp->port = -1;
     return 0;
 };

@@ -13,11 +13,10 @@
 
 int     serverSocket ( unsigned int addr, int port, int type ) ;
 int     serverAccept ( int sd ) ;
-int     clientSocket ( char *remote, int port ) ;
 int     closeSocket  ( int sd ) ;
 
 int     sendMessage  ( int socket, char *buffer, int len );
-int     recvMessage  ( int socket, char *buffer, int len );
+
 
 int     getClientIp  (int socket, char *ip_client);
 
