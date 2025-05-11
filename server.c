@@ -46,7 +46,7 @@ int send_log(char *username, char *op, char *file, char *date_time) {
     if (assigned_host == 0) {
         host = getenv("LOG_RPC_IP");
         if (host == NULL){
-            printf("LOG_RPC_IP no definida\n");
+            // printf("LOG_RPC_IP no definida\n");
             free(l);
             return -1;
         }
@@ -234,7 +234,7 @@ void *tratar_peticion(void *sd_client_void) {
         }
         p->port = strtol(buffer, &endptr, 10);
         if (endptr[0] != '\0') {
-            printf("Error: %s no es un número en base %d\n", buffer, 10);
+            //printf("Error: %s no es un número en base %d\n", buffer, 10);
             free(p);
             closeSocket(sd_client);
             pthread_mutex_unlock(&m);
