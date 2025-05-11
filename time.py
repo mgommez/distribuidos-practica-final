@@ -22,5 +22,5 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     logging.getLogger('spyne.protocol.xml').setLevel(logging.DEBUG)
     logging.info("listening to http://127.0.0.1:8000; wsdl is at: http://localhost:8000/?wsdl ")
-    server = make_server('0.0.0.0', 8000, application)
+    server = make_server('127.0.0.1', 8000, application)
     server.serve_forever()
